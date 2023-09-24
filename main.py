@@ -1,4 +1,10 @@
 from queue import PriorityQueue
+from operator import itemgetter
+
+def find_index(myList, v):
+    for i, x in enumerate(myList):
+        if v in x:
+            return (i, x.index(v))
 
 # Manhattan distance
 def manhattan_distance(initial_board, goal_board)-> int:
@@ -11,10 +17,9 @@ def manhattan_distance(initial_board, goal_board)-> int:
       if initial_board[i][j] != '0':
         
         # Calculate Manhattan distance
-        print(goal_board[i],initial_board[i][j])
-        x_diff=abs()
-        x_diff = abs(j - goal_board[i].index(initial_board[i][j]))  
-        y_diff = abs(i - initial_board.index(initial_board[i]))
+        a = find_index(goal_board,initial_board[i][j])
+        x_diff = abs(a[0]-i)
+        y_diff = abs(a[1]-j)
         distance += x_diff + y_diff
 
   return distance
@@ -36,14 +41,18 @@ def count_misplaced(initial_board, goal_board)-> int:
   return count
 
 #Test statements for heuristics
-#initial_board = [[1, 2, 3], [4, 5, 6],[0, 7, 8]]
+#initial_board = [['1', '2', '3'], 
+#                 ['0', '5', '6'],
+#                 ['4', '7', '8']]
 
-#goal_board = [[1, 2, 3],[4, 5, 6],[7, 8, 0]]
+#goal_board = [['1', '2', '3'],
+ #             ['4', '5', '6'],
+ #             ['7', '8', '0']]
 
 #print(manhattan_distance(initial_board, goal_board))
 #print(count_misplaced(initial_board, goal_board))
+
 def boardGood(board)->bool:
-  l=['1','2','3','4','5','6','7','8','9','0']
   l1=[]
   for i in range(3):
     for j in range(3):
@@ -51,12 +60,22 @@ def boardGood(board)->bool:
   if len(set(l1))<10:
     return False
   return True
+
 def showBoard(board:list[list[int]])->None:
   for i in range(3):
     for j in range(3):
       print(board[i][j],end=" ")
     print()
   print()
+
+def showBoards(boards:list[list[list[int]]],n:int)->None:
+  for k in range(n):
+    for i in range(3):
+      print(boards[i][k],end=" | ")
+      print(boards[i][k],end=" | ")
+      print(boards[i][k],end=" | ")
+      print()
+    print()
 
 #replaces empty space " ", with zero
 def replaceEmptySpace(board:list[list[int]])->list[list[int]]:
@@ -66,11 +85,10 @@ def replaceEmptySpace(board:list[list[int]])->list[list[int]]:
         board[i][j]='0'
   return board
 
-
 def findEmptySpace(board:list[list[int]])->list[int]:
   for i in range(3):
     for j in range(3):
-      if str(board[i][j]).isspace() or board[i][j]=='0':
+      if board[i][j]=='0':
         return [i,j]
       
   raise Exception("No space left in board, made an illegal move")
@@ -96,9 +114,6 @@ def attachManhattan(boards:list[list[list[int]]],goal:list[list[int]],count:int)
   d=[]
 
   for i in boards:
-    showBoard(i)
-    print("goal",end=" ")
-    showBoard(goal)
     d.append((manhattan_distance(i,goal) + count,i))
   
   return d
@@ -115,7 +130,7 @@ def attachMisplaced(boards:list[list[list[int]]],goal:list[list[int]],count:int)
 def actionList(board,prev_boards):
   boards=[]
   x,y = findEmptySpace(board)
-
+  c=0
   #Check if there is a legal move in the direction - up
   if x>0:
     mvUpBoard = cloneBoard(board)
@@ -123,6 +138,7 @@ def actionList(board,prev_boards):
     mvUpBoard[x-1][y] = '0'
 
     if mvUpBoard not in prev_boards:
+      c+=1
       boards.append(mvUpBoard)
   #Check if there is a legal move in the direction - left
   if y>0:
@@ -130,6 +146,7 @@ def actionList(board,prev_boards):
     mvleftBoard[x][y] = mvleftBoard[x][y-1]
     mvleftBoard[x][y-1] = '0'
     if mvleftBoard not in prev_boards:
+      c+=1
       boards.append(mvleftBoard)
   #Check if there is a legal move in the direction - right
   if y<2:
@@ -137,6 +154,7 @@ def actionList(board,prev_boards):
     mvrightBoard[x][y] = mvrightBoard[x][y+1]
     mvrightBoard[x][y+1] = '0'
     if mvrightBoard not in prev_boards:
+      c+=1
       boards.append(mvrightBoard)
   #Check if there is a legal move in the direction - down
   if x<2:
@@ -144,36 +162,51 @@ def actionList(board,prev_boards):
     mvdownBoard[x][y] = mvdownBoard[x+1][y]
     mvdownBoard[x+1][y] = '0'
     if mvdownBoard not in prev_boards:
+      c+=1
       boards.append(mvdownBoard)
 
-  return boards
 
-def aStarSearchManhattan(initial_board, goal_board)->dict:
-  path = {}
+  return (boards,c)
+
+def aStarSearchManhattan(initial_board, goal_board)->list:
+  path = []
   fringe=[]
   visited=[]
   count=0
-  fringe = PriorityQueue()
-  fringe.put((0,initial_board))
-  while not fringe.empty():
-    curr_board=fringe.get_nowait()[1]
-    visited.append(curr_board)
-    if goalTest(curr_board,goal_board):
-      return path
-    prospectiveBoards = actionList(curr_board,visited)
-    d = attachManhattan(prospectiveBoards,goal_board,count+1)
+  generated=0
+  #(f(n),g(n),h(n),node)
+  fringe.append((0,0,0,initial_board))
+  min_heu=999999
+  while len(fringe)>0:
+    node=fringe.pop(0)
+    curr_g=node[1]
+    curr_board=node[3]
 
+
+    visited.append(curr_board)
+
+    if goalTest(curr_board,goal_board):
+      print("Nodes expanded: ", count+1)
+      print("Nodes generated: ", generated+1)
+      print("cost",curr_g)
+      path.append(curr_board)
+      return path
+    
+    prospectiveBoards = actionList(curr_board,visited)
+    generated+=prospectiveBoards[1]
+    d = attachManhattan(prospectiveBoards[0],goal_board,curr_g+1)
     #updating the fringe, if board/node already exists, check if we have a better heuristic to update it in the frontier
     for key in d:
-      if any(key in item for item in fringe.queue):
-        while not (fringe.empty()):
-          curr=fringe.get_nowait()
-          if key not in curr:
-            fringe.put_nowait(curr)
+      if key[1] in visited:
+        continue
       else:
-        fringe.put((d[key],key))
-    path[curr_board]=count
+        fringe.append((key[0],curr_g+1,0,key[1]))
+    fringe.sort(key=itemgetter(0))
+    path.append(curr_board)
     count+=1
+  print("No solution found")
+  print("Nodes expanded: ", count+1)
+  print("Nodes generated: ", generated+1)
   return path
 
 
@@ -182,35 +215,69 @@ def aStarSearchMisplaced(initial_board, goal_board)->list:
   fringe=[]
   visited=[]
   count=0
-  fringe = PriorityQueue()
-  fringe.put((0,initial_board))
-  while not fringe.empty():
-    curr_board=fringe.get_nowait()[1]
-    if curr_board in visited:
-      pass
-    if not boardGood:
-      raise Exception(" Bad board")
+  generated=0
+  #(f(n),g(n),h(n),node)
+  fringe.append((0,0,0,initial_board))
+  min_heu=999999
+  while len(fringe)>0:
+    node=fringe.pop(0)
+    curr_g=node[1]
+    curr_board=node[3]
 
     visited.append(curr_board)
+
     if goalTest(curr_board,goal_board):
-      path.append((curr_board,count))
+      print("Nodes expanded: ", count+1)
+      print("Nodes generated: ", generated+1)
+      print("cost",curr_g)
+      path.append(curr_board)
       return path
+    
     prospectiveBoards = actionList(curr_board,visited)
-    d = attachMisplaced(prospectiveBoards,goal_board,count+1)
+    generated+=prospectiveBoards[1]
+    d = attachMisplaced(prospectiveBoards[0],goal_board,curr_g+1)
     #updating the fringe, if board/node already exists, check if we have a better heuristic to update it in the frontier
     for key in d:
-      fringe.put(key)
-    path.append((curr_board,count))
+      if key[1] in visited:
+        continue
+      else:
+        fringe.append((key[0],curr_g+1,0,key[1]))
+    fringe.sort(key=itemgetter(0))
+    path.append(curr_board)
     count+=1
+  print("No solution found")
+  print("Nodes expanded: ", count+1)
+  print("Nodes generated: ", generated+1)
   return path
 
 
-initial_boards = [[['1', '2', '3'], ['4', '5', '6'],[' ', '7', '8']],[['2','8','1'],['3','4','6'],['7','5','0']],[['7','2','4'],['5','0','6'],['8','3','6']],[['1','2','3'],['7','4','5'],['6','8','0']]]
+print("###### Welcome to 8 Puzzle Solver ######")
+while(1):
+  # Input for the initial state
+  print(f"Enter Initial State Board.")
+  init_board = []
+  for i in range(3):
+          row = list(map(str,input().split()))
+          if len(row) != 3:
+              print("Invalid input. Enter 3 elements for each row.")
+          init_board.append(row)
 
-goal_boards = [[['1', '2', '3'],['4', '5', '6'],['7', '8', '0']],[['3','2','1'],['8','0','4'],['7','5','6']],[['1','2','3'],['4','5','6'],['7','8','0']],[['1','2','3'],['8','6','4'],['7','5','0']]]
+  # Input for the goal state
+  print(f"Enter Goal State Board.")
+  goal = []
+  for i in range(3):
+          row = list(map(str,input().split()))
+          if len(row) != 3:
+              print("Invalid input. Enter 3 elements for each row.")
+          goal.append(row)
 
 
-for i in range(4):
-  initial_board = replaceEmptySpace(initial_boards[i])
-  goal_board = replaceEmptySpace(goal_boards[i])
-  print(aStarSearchMisplaced(initial_board,goal_board))
+  init_board=replaceEmptySpace(init_board)
+  goal=replaceEmptySpace(goal)
+  print("Misplaced")
+  print(aStarSearchMisplaced(init_board,goal))
+
+
+  print("Manhattan")
+
+  print(aStarSearchManhattan(init_board,goal))
